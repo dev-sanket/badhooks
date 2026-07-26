@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { sign } from "./signer.ts";
+import { sign } from "./signer.js";
 
 describe("sign", () => {
   const secret = "whsec_test_secret";
