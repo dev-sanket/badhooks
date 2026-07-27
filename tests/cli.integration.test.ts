@@ -231,4 +231,30 @@ describe("cli integration", () => {
       });
     }
   });
+
+  it("explains connection refusal without printing a stack trace", async () => {
+    const probe = await listen(() => ({ status: 200 }));
+    const url = probe.url;
+    await new Promise<void>((resolve, reject) => {
+      probe.server.close((err) => (err ? reject(err) : resolve()));
+    });
+
+    const captured = captureIo();
+    const code = await main(
+      ["run", "duplicate-charge-succeeded", "--target", url],
+      {
+        io: captured.io,
+        runnerDeps: { sleep: async () => {} },
+      },
+    );
+
+    assert.equal(code, 2);
+    assert.equal(captured.exitCode, 2);
+    const error = captured.stderrChunks.join("");
+    assert.equal(
+      error.trim(),
+      `nothing is listening on ${url} — is your app running?`,
+    );
+    assert.doesNotMatch(error, /TypeError|fetch failed|at node:/);
+  });
 });

@@ -7,6 +7,24 @@
   "bin": {
     "badhooks": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "fixtures",
+    "scenarios",
+    "AGENTS.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dev-sanket/badhooks.git"
+  },
+  "homepage": "https://github.com/dev-sanket/badhooks#readme",
+  "bugs": {
+    "url": "https://github.com/dev-sanket/badhooks/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -14,6 +32,7 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "tsx --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit",
+    "prepack": "pnpm test && pnpm typecheck && pnpm build",
     "badhooks": "tsx src/cli.ts"
   },
   "license": "MIT",
