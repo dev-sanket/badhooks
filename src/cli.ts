@@ -13,6 +13,7 @@ import {
 import {
   defaultRunnerDeps,
   runScenario,
+  type RunResult,
   type RunnerDeps,
 } from "./runner.js";
 
@@ -191,20 +192,30 @@ export async function main(
 
   const colors = colorsForTty(Boolean(io.stdout.isTTY));
 
-  const result = await runScenario(
-    scenario,
-    { target: parsed.target!, secret, verbose: parsed.verbose },
-    defaultRunnerDeps({
-      ...options.runnerDeps,
-      onDelivery: (delivery) => {
-        options.runnerDeps?.onDelivery?.(delivery);
-        io.stdout.write(formatDeliveryLine(delivery, colors) + "\n");
-        if (parsed.verbose) {
-          io.stdout.write(formatVerboseDelivery(delivery) + "\n");
-        }
-      },
-    }),
-  );
+  let result: RunResult;
+  try {
+    result = await runScenario(
+      scenario,
+      { target: parsed.target!, secret, verbose: parsed.verbose },
+      defaultRunnerDeps({
+        ...options.runnerDeps,
+        onDelivery: (delivery) => {
+          options.runnerDeps?.onDelivery?.(delivery);
+          io.stdout.write(formatDeliveryLine(delivery, colors) + "\n");
+          if (parsed.verbose) {
+            io.stdout.write(formatVerboseDelivery(delivery) + "\n");
+          }
+        },
+      }),
+    );
+  } catch (error) {
+    const message = isConnectionRefused(error)
+      ? `nothing is listening on ${parsed.target} — is your app running?`
+      : `Request failed: ${error instanceof Error ? error.message : String(error)}`;
+    io.stderr.write(message + "\n");
+    io.exit(2);
+    return 2;
+  }
 
   io.stdout.write("\n" + formatSummary(result, colors) + "\n");
   const code = result.result === "fail" ? 1 : 0;
@@ -237,6 +248,24 @@ export function formatDescription(scenario: ScenarioDefinition): string {
   });
 
   return lines.join("\n");
+}
+
+function isConnectionRefused(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    cause?: unknown;
+    errors?: unknown[];
+  };
+
+  return (
+    candidate.code === "ECONNREFUSED" ||
+    isConnectionRefused(candidate.cause) ||
+    candidate.errors?.some(isConnectionRefused) === true
+  );
 }
 
 const isDirectRun =

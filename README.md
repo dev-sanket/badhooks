@@ -31,8 +31,6 @@ badhooks run duplicate-charge-succeeded \
 
 No Stripe account. No Stripe CLI. Just your endpoint and your webhook secret.
 
-![demo](docs/demo.gif)
-
 ---
 
 ## Install
