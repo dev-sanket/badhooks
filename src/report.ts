@@ -66,6 +66,44 @@ export function formatDeliveryLine(
   return delivery.ok ? line : colors.dim(line);
 }
 
+function expectedLine(result: RunResult): string {
+  if (result.scenario === "duplicate-charge-succeeded") {
+    return "  Expected  the replayed event rejected (409) or acknowledged with no work done";
+  }
+  if (result.scenario === "refund-before-payment") {
+    return "  Expected  refund rejected, then charge accepted";
+  }
+  if (result.scenario === "charge-and-payment-intent-succeeded") {
+    return "  Expected  at most one accepted delivery for the same underlying payment";
+  }
+  if (result.scenario === "delayed-charge-succeeded") {
+    return "  Expected  the late charge.succeeded accepted (2xx)";
+  }
+  return "  Expected  deliveries to match scenario expectations";
+}
+
+function actualLine(result: RunResult): string {
+  const acceptedCount = result.deliveries.filter(
+    (d) => d.status >= 200 && d.status < 300,
+  ).length;
+
+  if (
+    result.scenario === "duplicate-charge-succeeded" &&
+    acceptedCount > 1
+  ) {
+    return "  Actual    both deliveries returned 200";
+  }
+
+  if (
+    result.scenario === "charge-and-payment-intent-succeeded" &&
+    acceptedCount > 1
+  ) {
+    return "  Actual    both events returned 2xx";
+  }
+
+  return `  Actual    ${describeActual(result.deliveries)}`;
+}
+
 export function formatSummary(
   result: RunResult,
   colors: ReportColors = plainColors,
@@ -74,34 +112,29 @@ export function formatSummary(
     return [
       colors.green(`✓ PASS  ${result.scenario}`),
       "",
-      "  Endpoint rejected the replayed event.",
+      `  ${result.pass_detail ?? "Scenario expectations met."}`,
     ].join("\n");
   }
-
-  const acceptedCount = result.deliveries.filter(
-    (d) => d.status >= 200 && d.status < 300,
-  ).length;
 
   const lines = [
     colors.red(`✗ FAIL  ${result.scenario}`),
     "",
-    "  Expected  the replayed event rejected (409) or acknowledged with no work done",
-    `  Actual    ${
-      acceptedCount > 1
-        ? "both deliveries returned 200"
-        : describeActual(result.deliveries)
-    }`,
+    expectedLine(result),
+    actualLine(result),
     "",
-    "  Your handler is not deduplicating on event ID.",
-    "  Check your database — if there are now two payment rows, this is the bug.",
+    `  ${result.diagnosis ?? "Scenario expectations were not met."}`,
   ];
+
+  if (result.manual_check_required) {
+    lines.push(`  ${result.manual_check_required}`);
+  }
 
   return lines.join("\n");
 }
 
 function describeActual(deliveries: readonly DeliveryOutcome[]): string {
   return deliveries
-    .map((d) => `${d.replay ? "replay" : "first"}=${d.status}`)
+    .map((d) => `${d.event}${d.replay ? "(replay)" : ""}=${d.status}`)
     .join(", ");
 }
 

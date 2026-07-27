@@ -90,4 +90,77 @@ describe("runScenario", () => {
     assert.equal(result.deliveries[1]?.ok, false);
     assert.equal(result.deliveries[1]?.replay, true);
   });
+
+  it("signs delayed-charge-succeeded 90 seconds in the past", async () => {
+    const scenario = await loadScenario("delayed-charge-succeeded");
+    const secret = "whsec_test_secret";
+    const nowMs = 1_700_000_090_000;
+    let signedHeader = "";
+
+    const result = await runScenario(
+      scenario,
+      { target: "http://example.test/webhooks/stripe", secret },
+      {
+        now: () => nowMs,
+        sleep: async () => {},
+        fetch: async (_input, init) => {
+          signedHeader = new Headers(init?.headers).get("Stripe-Signature") ?? "";
+          return new Response("{}", { status: 200 });
+        },
+      },
+    );
+
+    const timestamp = Math.floor(nowMs / 1000) - 90;
+    const body = scenario.bodies["charge.succeeded"]!;
+    const expectedV1 = createHmac("sha256", secret)
+      .update(`${timestamp}.${body}`, "utf8")
+      .digest("hex");
+    assert.equal(signedHeader, `t=${timestamp},v1=${expectedV1}`);
+    assert.equal(result.passed, true);
+  });
+
+  it("runs refund-before-payment with distinct event ids", async () => {
+    const scenario = await loadScenario("refund-before-payment");
+    const statuses = [409, 200];
+    let i = 0;
+    const result = await runScenario(
+      scenario,
+      {
+        target: "http://example.test/webhooks/stripe",
+        secret: "whsec_test_secret",
+      },
+      {
+        now: () => 1_700_000_000_000,
+        sleep: async () => {},
+        fetch: async () => new Response("{}", { status: statuses[i++]! }),
+      },
+    );
+
+    assert.equal(result.passed, true);
+    assert.equal(result.deliveries[0]?.replay, false);
+    assert.equal(result.deliveries[1]?.replay, false);
+    assert.equal(result.deliveries[0]?.id, "evt_9f8e7d");
+    assert.equal(result.deliveries[1]?.id, "evt_4c5d6e");
+  });
+
+  it("fails charge-and-payment-intent-succeeded when both are accepted", async () => {
+    const scenario = await loadScenario("charge-and-payment-intent-succeeded");
+    const result = await runScenario(
+      scenario,
+      {
+        target: "http://example.test/webhooks/stripe",
+        secret: "whsec_test_secret",
+      },
+      {
+        now: () => 1_700_000_000_000,
+        sleep: async () => {},
+        fetch: async () => new Response("{}", { status: 200 }),
+      },
+    );
+
+    assert.equal(result.passed, false);
+    assert.equal(result.deliveries[0]?.replay, false);
+    assert.equal(result.deliveries[1]?.replay, false);
+    assert.equal(result.assertion, "at_most_one_accepted");
+  });
 });

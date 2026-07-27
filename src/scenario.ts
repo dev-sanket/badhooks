@@ -11,6 +11,8 @@ export type ScenarioDelivery = {
   id: string;
   delay_ms: number;
   expect: DeliveryExpect;
+  /** Added to Math.floor(now/1000) when signing. Use -90 for delayed-charge-succeeded. */
+  timestamp_offset_s?: number;
 };
 
 export type ScenarioDefinition = {
@@ -18,6 +20,9 @@ export type ScenarioDefinition = {
   summary: string;
   catches: string;
   assert?: ScenarioAssert;
+  diagnosis?: string;
+  manual_check_required?: string;
+  pass_detail?: string;
   deliveries: ScenarioDelivery[];
   fixtures: Record<string, string>;
 };

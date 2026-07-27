@@ -53,6 +53,10 @@ describe("report", () => {
       passed: false,
       assertion: "at_most_one_accepted",
       deliveries: [first, replayAccepted],
+      diagnosis: "Your handler is not deduplicating on event ID.",
+      manual_check_required:
+        "Check your database — if there are now two payment rows, this is the bug.",
+      pass_detail: "Endpoint rejected the replayed event.",
     };
     const summary = formatSummary(result, plainColors);
     assert.match(summary, /✗ FAIL {2}duplicate-charge-succeeded/);
@@ -69,9 +73,49 @@ describe("report", () => {
       passed: true,
       assertion: "at_most_one_accepted",
       deliveries: [first, replayRejected],
+      diagnosis: "Your handler is not deduplicating on event ID.",
+      manual_check_required:
+        "Check your database — if there are now two payment rows, this is the bug.",
+      pass_detail: "Endpoint rejected the replayed event.",
     };
     const report = formatRunReport(result, plainColors);
     assert.match(report, /✓ PASS {2}duplicate-charge-succeeded/);
     assert.match(report, /Endpoint rejected the replayed event/);
+  });
+
+  it("formats refund-before-payment PASS copy", () => {
+    const result: RunResult = {
+      scenario: "refund-before-payment",
+      passed: true,
+      assertion: null,
+      deliveries: [
+        {
+          event: "charge.refunded",
+          id: "evt_9f8e7d",
+          replay: false,
+          status: 409,
+          expected: "rejected",
+          ok: true,
+          ms: 31,
+        },
+        {
+          event: "charge.succeeded",
+          id: "evt_4c5d6e",
+          replay: false,
+          status: 200,
+          expected: "accepted",
+          ok: true,
+          ms: 28,
+        },
+      ],
+      diagnosis: "Handler processed a refund before it had seen the charge.",
+      manual_check_required: "Inspect the database for a refund...",
+      pass_detail:
+        "Endpoint rejected a refund for a charge it had never seen.",
+    };
+    assert.match(
+      formatSummary(result, plainColors),
+      /Endpoint rejected a refund for a charge it had never seen/,
+    );
   });
 });

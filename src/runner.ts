@@ -13,6 +13,9 @@ export type RunResult = {
   passed: boolean;
   assertion: string | null;
   deliveries: DeliveryOutcome[];
+  diagnosis: string | null;
+  manual_check_required: string | null;
+  pass_detail: string | null;
 };
 
 export type RunnerDeps = {
@@ -62,7 +65,8 @@ export async function runScenario(
       );
     }
 
-    const timestamp = Math.floor(deps.now() / 1000);
+    const timestamp =
+      Math.floor(deps.now() / 1000) + (delivery.timestamp_offset_s ?? 0);
     const { header } = sign(body, options.secret, timestamp);
     const replay = seenIds.has(delivery.id);
     seenIds.add(delivery.id);
@@ -97,5 +101,8 @@ export async function runScenario(
     passed: evaluateRun(scenario.assert, deliveries),
     assertion: scenario.assert ?? null,
     deliveries,
+    diagnosis: scenario.diagnosis ?? null,
+    manual_check_required: scenario.manual_check_required ?? null,
+    pass_detail: scenario.pass_detail ?? null,
   };
 }
