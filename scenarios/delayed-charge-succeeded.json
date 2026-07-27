@@ -1,0 +1,20 @@
+{
+  "name": "delayed-charge-succeeded",
+  "summary": "charge.succeeded arrives 90 seconds late, after the app may have given up.",
+  "catches": "Handler ignores or rejects a late success — customer paid, order never fulfilled.",
+  "diagnosis": "Handler rejected or ignored a late charge.succeeded that still had a valid signature.",
+  "manual_check_required": "Inspect the database — if the order is failed/cancelled while Stripe shows the charge succeeded, this is confirmed.",
+  "pass_detail": "Endpoint accepted a charge.succeeded signed 90 seconds in the past.",
+  "deliveries": [
+    {
+      "event": "charge.succeeded",
+      "id": "evt_late_90s",
+      "delay_ms": 0,
+      "expect": "accepted",
+      "timestamp_offset_s": -90
+    }
+  ],
+  "fixtures": {
+    "charge.succeeded": "fixtures/charge.succeeded.delayed.json"
+  }
+}

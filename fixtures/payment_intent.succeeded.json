@@ -1,0 +1,30 @@
+{
+  "id": "evt_pi_7a8b9c",
+  "object": "event",
+  "api_version": "2024-09-30.acacia",
+  "created": 1700000000,
+  "type": "payment_intent.succeeded",
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_pi_7a8b9c",
+    "idempotency_key": null
+  },
+  "data": {
+    "object": {
+      "id": "pi_7a8b9c",
+      "object": "payment_intent",
+      "amount": 2500,
+      "amount_received": 2500,
+      "currency": "usd",
+      "customer": "cus_7a8b9c",
+      "description": "Order ord_7a8b9c",
+      "latest_charge": "ch_7a8b9c",
+      "receipt_email": "customer@example.com",
+      "status": "succeeded",
+      "metadata": {
+        "order_id": "ord_7a8b9c"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "refund-before-payment",
+  "summary": "charge.refunded arrives before the charge.succeeded it belongs to.",
+  "catches": "Handler assumes event ordering — negative balances, orphaned refund rows.",
+  "diagnosis": "Handler processed a refund before it had seen the charge.",
+  "manual_check_required": "Inspect the database for a refund or negative balance on a charge/order that was never marked paid.",
+  "pass_detail": "Endpoint rejected a refund for a charge it had never seen.",
+  "deliveries": [
+    { "event": "charge.refunded", "id": "evt_9f8e7d", "delay_ms": 0, "expect": "rejected" },
+    { "event": "charge.succeeded", "id": "evt_4c5d6e", "delay_ms": 1000, "expect": "accepted" }
+  ],
+  "fixtures": {
+    "charge.refunded": "fixtures/charge.refunded.json",
+    "charge.succeeded": "fixtures/charge.succeeded.refund-pair.json"
+  }
+}

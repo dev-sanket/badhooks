@@ -1,0 +1,32 @@
+{
+  "id": "evt_late_90s",
+  "object": "event",
+  "api_version": "2024-09-30.acacia",
+  "created": 1700000000,
+  "type": "charge.succeeded",
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_late_90s",
+    "idempotency_key": null
+  },
+  "data": {
+    "object": {
+      "id": "ch_late_90s",
+      "object": "charge",
+      "amount": 1800,
+      "amount_captured": 1800,
+      "amount_refunded": 0,
+      "currency": "usd",
+      "customer": "cus_late_90s",
+      "description": "Order ord_late_90s",
+      "paid": true,
+      "payment_intent": "pi_late_90s",
+      "receipt_email": "customer@example.com",
+      "status": "succeeded",
+      "metadata": {
+        "order_id": "ord_late_90s"
+      }
+    }
+  }
+}
