@@ -4,12 +4,17 @@
   "description": "Deliver deliberately broken Stripe webhook sequences to a local endpoint",
   "type": "module",
   "packageManager": "pnpm@9.15.0",
+  "bin": {
+    "badhooks": "./dist/cli.js"
+  },
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "test": "tsx --test tests/**/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "badhooks": "tsx src/cli.ts"
   },
   "license": "MIT",
   "devDependencies": {

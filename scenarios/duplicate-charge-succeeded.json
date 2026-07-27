@@ -1,0 +1,13 @@
+{
+  "name": "duplicate-charge-succeeded",
+  "summary": "The same charge.succeeded event delivered twice, 3s apart.",
+  "catches": "Handler isn't idempotent on event ID — customer charged twice.",
+  "assert": "at_most_one_accepted",
+  "deliveries": [
+    { "event": "charge.succeeded", "id": "evt_1a2b3c", "delay_ms": 0, "expect": "accepted" },
+    { "event": "charge.succeeded", "id": "evt_1a2b3c", "delay_ms": 3000, "expect": "rejected" }
+  ],
+  "fixtures": {
+    "charge.succeeded": "fixtures/charge.succeeded.json"
+  }
+}

@@ -1,0 +1,29 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { describe, it } from "node:test";
+import { join } from "node:path";
+import { loadScenario, packageRoot } from "../src/scenario.js";
+
+describe("loadScenario", () => {
+  it("loads duplicate-charge-succeeded with an exact fixture body", async () => {
+    const root = packageRoot();
+    const scenario = await loadScenario("duplicate-charge-succeeded", root);
+    const fixturePath = join(root, "fixtures", "charge.succeeded.json");
+    const rawFixture = await readFile(fixturePath, "utf8");
+
+    assert.equal(scenario.name, "duplicate-charge-succeeded");
+    assert.equal(scenario.assert, "at_most_one_accepted");
+    assert.equal(scenario.deliveries.length, 2);
+    assert.equal(scenario.deliveries[0]?.id, "evt_1a2b3c");
+    assert.equal(scenario.deliveries[1]?.delay_ms, 3000);
+    assert.equal(scenario.bodies["charge.succeeded"], rawFixture);
+    assert.match(rawFixture, /"id": "evt_1a2b3c"/);
+  });
+
+  it("errors on unknown scenarios", async () => {
+    await assert.rejects(
+      () => loadScenario("does-not-exist"),
+      /Unknown scenario: does-not-exist/,
+    );
+  });
+});
