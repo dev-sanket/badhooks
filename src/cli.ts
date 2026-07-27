@@ -1,6 +1,15 @@
 #!/usr/bin/env node
-import { loadScenario } from "./scenario.js";
-import { colorsForTty, formatDeliveryLine, formatSummary } from "./report.js";
+import {
+  listScenarios,
+  loadScenario,
+  type ScenarioDefinition,
+} from "./scenario.js";
+import {
+  colorsForTty,
+  formatDeliveryLine,
+  formatSummary,
+  formatVerboseDelivery,
+} from "./report.js";
 import {
   defaultRunnerDeps,
   runScenario,
@@ -20,21 +29,43 @@ export type MainOptions = {
 };
 
 const usage = `Usage:
-  badhooks run <scenario> --target <url> [--secret whsec_…]
+  badhooks list
+  badhooks describe <scenario>
+  badhooks run <scenario> --target <url> [--secret whsec_…] [--verbose]
 
 Exit codes: 0 pass, 1 fail, 2 usage/config error.`;
 
-export function parseArgs(argv: string[]): {
-  command?: string;
+export type ParsedArgs = {
+  command?: "list" | "describe" | "run";
   scenario?: string;
   target?: string;
   secret?: string;
+  verbose?: boolean;
   error?: string;
-} {
+};
+
+export function parseArgs(argv: string[]): ParsedArgs {
   const [command, ...rest] = argv;
   if (!command) {
     return { error: "Missing command.\n\n" + usage };
   }
+
+  if (command === "list") {
+    return rest.length === 0
+      ? { command: "list" }
+      : { error: `Unexpected argument: ${rest[0]}\n\n${usage}` };
+  }
+
+  if (command === "describe") {
+    if (rest.length === 0) {
+      return { error: "Missing scenario name.\n\n" + usage };
+    }
+    if (rest.length > 1) {
+      return { error: `Unexpected argument: ${rest[1]}\n\n${usage}` };
+    }
+    return { command: "describe", scenario: rest[0] };
+  }
+
   if (command !== "run") {
     return {
       error: `Unknown command: ${command}\n\n${usage}`,
@@ -44,6 +75,7 @@ export function parseArgs(argv: string[]): {
   let scenario: string | undefined;
   let target: string | undefined;
   let secret: string | undefined;
+  let verbose = false;
 
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
@@ -55,6 +87,10 @@ export function parseArgs(argv: string[]): {
     if (arg === "--secret") {
       secret = rest[++i];
       if (!secret) return { error: "Missing value for --secret.\n\n" + usage };
+      continue;
+    }
+    if (arg === "--verbose") {
+      verbose = true;
       continue;
     }
     if (arg.startsWith("-")) {
@@ -75,7 +111,7 @@ export function parseArgs(argv: string[]): {
     };
   }
 
-  return { command, scenario, target, secret };
+  return { command: "run", scenario, target, secret, verbose };
 }
 
 export function resolveSecret(
@@ -107,6 +143,34 @@ export async function main(
     return 2;
   }
 
+  if (parsed.command === "list") {
+    try {
+      const scenarios = await listScenarios();
+      for (const scenario of scenarios) {
+        io.stdout.write(`${scenario.name}\n  ${scenario.summary}\n`);
+      }
+      io.exit(0);
+      return 0;
+    } catch (error) {
+      io.stderr.write((error as Error).message + "\n");
+      io.exit(2);
+      return 2;
+    }
+  }
+
+  if (parsed.command === "describe") {
+    try {
+      const scenario = await loadScenario(parsed.scenario!);
+      io.stdout.write(formatDescription(scenario) + "\n");
+      io.exit(0);
+      return 0;
+    } catch (error) {
+      io.stderr.write((error as Error).message + "\n");
+      io.exit(2);
+      return 2;
+    }
+  }
+
   let secret: string;
   try {
     secret = resolveSecret(parsed.secret, io.env);
@@ -129,20 +193,50 @@ export async function main(
 
   const result = await runScenario(
     scenario,
-    { target: parsed.target!, secret },
+    { target: parsed.target!, secret, verbose: parsed.verbose },
     defaultRunnerDeps({
       ...options.runnerDeps,
       onDelivery: (delivery) => {
         options.runnerDeps?.onDelivery?.(delivery);
         io.stdout.write(formatDeliveryLine(delivery, colors) + "\n");
+        if (parsed.verbose) {
+          io.stdout.write(formatVerboseDelivery(delivery) + "\n");
+        }
       },
     }),
   );
 
   io.stdout.write("\n" + formatSummary(result, colors) + "\n");
-  const code = result.passed ? 0 : 1;
+  const code = result.result === "fail" ? 1 : 0;
   io.exit(code);
   return code;
+}
+
+export function formatDescription(scenario: ScenarioDefinition): string {
+  const lines = [
+    scenario.name,
+    "",
+    scenario.summary,
+    "",
+    `Catches: ${scenario.catches}`,
+    `Assertion: ${scenario.assert ?? "per-delivery expectations"}`,
+    "",
+    "Deliveries:",
+  ];
+
+  scenario.deliveries.forEach((delivery, index) => {
+    lines.push(
+      `  ${index + 1}. ${delivery.event} (${delivery.id}) — expect ${delivery.expect}` +
+        (delivery.delay_ms > 0 ? ` after ${delivery.delay_ms}ms` : ""),
+    );
+    if (delivery.timestamp_offset_s && delivery.timestamp_offset_s < 0) {
+      lines.push(
+        `     Signature timestamp: ${Math.abs(delivery.timestamp_offset_s)} seconds in the past`,
+      );
+    }
+  });
+
+  return lines.join("\n");
 }
 
 const isDirectRun =

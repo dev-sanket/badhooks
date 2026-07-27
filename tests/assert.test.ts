@@ -70,27 +70,33 @@ describe("evaluateOverall", () => {
 });
 
 describe("evaluateRun", () => {
-  it("requires every delivery and the overall assertion", () => {
+  it("passes when every delivery and the overall assertion pass", () => {
     assert.equal(
       evaluateRun("at_most_one_accepted", [
         outcome({ status: 200, ok: true }),
         outcome({ status: 409, ok: true, replay: true, expected: "rejected" }),
       ]),
-      true,
+      "pass",
     );
+  });
+
+  it("is inconclusive when all accepted responses could have been no-ops", () => {
     assert.equal(
       evaluateRun("at_most_one_accepted", [
         outcome({ status: 200, ok: true }),
         outcome({ status: 200, ok: false, replay: true, expected: "rejected" }),
       ]),
-      false,
+      "inconclusive",
     );
+  });
+
+  it("fails when HTTP responses prove a delivery expectation was missed", () => {
     assert.equal(
       evaluateRun("at_most_one_accepted", [
         outcome({ status: 409, ok: false }),
         outcome({ status: 200, ok: true, replay: true, expected: "rejected" }),
       ]),
-      false,
+      "fail",
     );
   });
 });

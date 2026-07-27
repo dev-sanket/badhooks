@@ -8,7 +8,11 @@ export type DeliveryOutcome = {
   expected: DeliveryExpect;
   ok: boolean;
   ms: number;
+  requestBody?: string;
+  responseBody?: string;
 };
+
+export type RunStatus = "pass" | "fail" | "inconclusive";
 
 export function evaluateDelivery(
   expect: DeliveryExpect,
@@ -42,8 +46,23 @@ export function evaluateOverall(
 export function evaluateRun(
   assertion: ScenarioAssert | undefined,
   deliveries: readonly DeliveryOutcome[],
-): boolean {
-  return (
-    deliveries.every((d) => d.ok) && evaluateOverall(assertion, deliveries)
-  );
+): RunStatus {
+  if (
+    deliveries.every((delivery) => delivery.ok) &&
+    evaluateOverall(assertion, deliveries)
+  ) {
+    return "pass";
+  }
+
+  const onlyAmbiguousFailures =
+    assertion === "at_most_one_accepted" &&
+    deliveries.every(
+      (delivery) =>
+        delivery.ok ||
+        (delivery.expected === "rejected" &&
+          delivery.status >= 200 &&
+          delivery.status < 300),
+    );
+
+  return onlyAmbiguousFailures ? "inconclusive" : "fail";
 }

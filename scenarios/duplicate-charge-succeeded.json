@@ -3,8 +3,8 @@
   "summary": "The same charge.succeeded event delivered twice, 3s apart.",
   "catches": "Handler isn't idempotent on event ID — customer charged twice.",
   "assert": "at_most_one_accepted",
-  "diagnosis": "Your handler is not deduplicating on event ID.",
-  "manual_check_required": "Check your database — if there are now two payment rows, this is the bug.",
+  "diagnosis": "Endpoint responses did not meet the scenario's accepted/rejected contract.",
+  "manual_check_required": "Check your database: one payment row for evt_1a2b3c = correct. Two = the bug.",
   "pass_detail": "Endpoint rejected the replayed event.",
   "deliveries": [
     { "event": "charge.succeeded", "id": "evt_1a2b3c", "delay_ms": 0, "expect": "accepted" },

@@ -17,13 +17,16 @@ badhooks run duplicate-charge-succeeded \
 → charge.succeeded             evt_1a2b3c              200 OK   42ms
 → charge.succeeded  (replay)   evt_1a2b3c              200 OK   38ms
 
-✗ FAIL  duplicate-charge-succeeded
+? INCONCLUSIVE  duplicate-charge-succeeded
 
-  Expected  the replayed event rejected (409) or acknowledged with no work done
-  Actual    both deliveries returned 200
+  Both deliveries returned 200. That's valid — Stripe recommends
+  acknowledging duplicates rather than rejecting them.
 
-  Your handler is not deduplicating on event ID.
-  Check your database — if there are now two payment rows, this is the bug.
+  badhooks can't see whether work happened twice.
+  Check your database: one payment row for evt_1a2b3c = correct.
+  Two = the bug.
+
+  (A 409 on the replay would let badhooks confirm this automatically.)
 ```
 
 No Stripe account. No Stripe CLI. Just your endpoint and your webhook secret.
@@ -98,10 +101,10 @@ failure you can hand to a coworker.
 
 ## What it checks
 
-Scenarios assert on what's observable over HTTP: status codes, how many deliveries you
-accepted, and response timing. That's enough to catch the whole class of bugs above,
-because a handler that returns `200` twice for the same event has already done the work
-twice.
+Scenarios assert on what's observable over HTTP: status codes, delivery count, ordering,
+and response timing. A `2xx` response does not prove work happened: Stripe recommends
+acknowledging duplicate events even when the handler performs no work. In ambiguous
+cases, badhooks reports `INCONCLUSIVE` and tells you exactly what to inspect.
 
 It cannot see inside your database. When a scenario fails, it tells you what to go look
 for — it doesn't claim to have found it.
@@ -120,7 +123,8 @@ badhooks run <scenario>          # run against --target
 | `--secret <whsec_...>` | Signing secret, if you'd rather not use the env var |
 | `--verbose` | Print full request and response bodies |
 
-Exit code is `0` on pass and `1` on fail, so it works as a CI step.
+Exit code is `0` on pass or inconclusive, `1` on a proven failure, and `2` on usage or
+configuration errors.
 
 ## Contributing
 
