@@ -47,10 +47,11 @@ describe("report", () => {
     );
   });
 
-  it("formats FAIL summary with observable-only wording", () => {
+  it("formats INCONCLUSIVE summary with honest observable-only wording", () => {
     const result: RunResult = {
       scenario: "duplicate-charge-succeeded",
       passed: false,
+      result: "inconclusive",
       assertion: "at_most_one_accepted",
       deliveries: [first, replayAccepted],
       diagnosis: "Your handler is not deduplicating on event ID.",
@@ -59,11 +60,12 @@ describe("report", () => {
       pass_detail: "Endpoint rejected the replayed event.",
     };
     const summary = formatSummary(result, plainColors);
-    assert.match(summary, /✗ FAIL {2}duplicate-charge-succeeded/);
-    assert.match(summary, /Expected {2}the replayed event rejected/);
-    assert.match(summary, /Actual {4}both deliveries returned 200/);
-    assert.match(summary, /not deduplicating on event ID/);
+    assert.match(summary, /\? INCONCLUSIVE {2}duplicate-charge-succeeded/);
+    assert.match(summary, /Both deliveries returned 200/);
+    assert.match(summary, /Stripe recommends\s+acknowledging duplicates/);
+    assert.match(summary, /can't see whether work happened twice/);
     assert.match(summary, /Check your database/);
+    assert.doesNotMatch(summary, /not deduplicating on event ID/);
     assert.doesNotMatch(summary, /you created two rows/);
   });
 
@@ -71,6 +73,7 @@ describe("report", () => {
     const result: RunResult = {
       scenario: "duplicate-charge-succeeded",
       passed: true,
+      result: "pass",
       assertion: "at_most_one_accepted",
       deliveries: [first, replayRejected],
       diagnosis: "Your handler is not deduplicating on event ID.",
@@ -87,6 +90,7 @@ describe("report", () => {
     const result: RunResult = {
       scenario: "refund-before-payment",
       passed: true,
+      result: "pass",
       assertion: null,
       deliveries: [
         {

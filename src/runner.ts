@@ -2,6 +2,7 @@ import {
   evaluateDelivery,
   evaluateRun,
   type DeliveryOutcome,
+  type RunStatus,
 } from "./assert.js";
 import type { LoadedScenario } from "./scenario.js";
 import { sign } from "./signer.js";
@@ -10,6 +11,7 @@ export type { DeliveryOutcome };
 
 export type RunResult = {
   scenario: string;
+  result: RunStatus;
   passed: boolean;
   assertion: string | null;
   deliveries: DeliveryOutcome[];
@@ -29,6 +31,7 @@ export type RunnerDeps = {
 export type RunOptions = {
   target: string;
   secret: string;
+  verbose?: boolean;
 };
 
 const defaultSleep = (ms: number): Promise<void> =>
@@ -80,6 +83,7 @@ export async function runScenario(
       },
       body,
     });
+    const responseBody = options.verbose ? await response.text() : undefined;
     const ms = Math.max(0, Math.round(deps.now() - started));
 
     const outcome: DeliveryOutcome = {
@@ -90,15 +94,20 @@ export async function runScenario(
       expected: delivery.expect,
       ok: evaluateDelivery(delivery.expect, response.status),
       ms,
+      requestBody: options.verbose ? body : undefined,
+      responseBody,
     };
 
     deliveries.push(outcome);
     deps.onDelivery?.(outcome);
   }
 
+  const result = evaluateRun(scenario.assert, deliveries);
+
   return {
     scenario: scenario.name,
-    passed: evaluateRun(scenario.assert, deliveries),
+    result,
+    passed: result === "pass",
     assertion: scenario.assert ?? null,
     deliveries,
     diagnosis: scenario.diagnosis ?? null,

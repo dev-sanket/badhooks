@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -84,4 +84,20 @@ export async function loadScenario(
   }
 
   return { ...definition, bodies };
+}
+
+export async function listScenarios(
+  root = packageRoot(),
+): Promise<ScenarioDefinition[]> {
+  const scenarioDir = join(root, "scenarios");
+  const files = (await readdir(scenarioDir))
+    .filter((file) => file.endsWith(".json"))
+    .sort();
+
+  return Promise.all(
+    files.map(async (file) => {
+      const raw = await readFile(join(scenarioDir, file), "utf8");
+      return JSON.parse(raw) as ScenarioDefinition;
+    }),
+  );
 }

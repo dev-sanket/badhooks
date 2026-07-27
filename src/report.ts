@@ -20,6 +20,7 @@ const STATUS_TEXT: Record<number, string> = {
 export type ReportColors = {
   green: (text: string) => string;
   red: (text: string) => string;
+  yellow: (text: string) => string;
   dim: (text: string) => string;
 };
 
@@ -28,6 +29,7 @@ const identity = (text: string): string => text;
 export const plainColors: ReportColors = {
   green: identity,
   red: identity,
+  yellow: identity,
   dim: identity,
 };
 
@@ -35,6 +37,7 @@ export function ansiColors(): ReportColors {
   return {
     green: (text) => `\u001b[32m${text}\u001b[0m`,
     red: (text) => `\u001b[31m${text}\u001b[0m`,
+    yellow: (text) => `\u001b[33m${text}\u001b[0m`,
     dim: (text) => `\u001b[2m${text}\u001b[0m`,
   };
 }
@@ -108,11 +111,32 @@ export function formatSummary(
   result: RunResult,
   colors: ReportColors = plainColors,
 ): string {
-  if (result.passed) {
+  if (result.result === "pass") {
     return [
       colors.green(`✓ PASS  ${result.scenario}`),
       "",
       `  ${result.pass_detail ?? "Scenario expectations met."}`,
+    ].join("\n");
+  }
+
+  if (result.result === "inconclusive") {
+    const duplicate = result.scenario === "duplicate-charge-succeeded";
+    return [
+      colors.yellow(`? INCONCLUSIVE  ${result.scenario}`),
+      "",
+      duplicate
+        ? "  Both deliveries returned 200. That's valid — Stripe recommends"
+        : "  Both deliveries returned 2xx. That's valid — Stripe recommends",
+      duplicate
+        ? "  acknowledging duplicates rather than rejecting them."
+        : "  acknowledging webhook events even when no work is performed.",
+      "",
+      "  badhooks can't see whether work happened twice.",
+      `  ${result.manual_check_required ?? "Check your database to confirm whether work happened once or twice."}`,
+      "",
+      duplicate
+        ? "  (A 409 on the replay would let badhooks confirm this automatically.)"
+        : "  (A 4xx on one delivery would let badhooks confirm this automatically.)",
     ].join("\n");
   }
 
@@ -130,6 +154,22 @@ export function formatSummary(
   }
 
   return lines.join("\n");
+}
+
+export function formatVerboseDelivery(delivery: DeliveryOutcome): string {
+  return [
+    "  Request body:",
+    indent(delivery.requestBody ?? ""),
+    "  Response body:",
+    indent(delivery.responseBody ?? ""),
+  ].join("\n");
+}
+
+function indent(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => `    ${line}`)
+    .join("\n");
 }
 
 function describeActual(deliveries: readonly DeliveryOutcome[]): string {

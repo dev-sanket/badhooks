@@ -66,12 +66,13 @@ describe("runScenario", () => {
       { replay: true, status: 409 },
     ]);
     assert.equal(result.passed, true);
+    assert.equal(result.result, "pass");
     assert.equal(result.deliveries[0]?.ok, true);
     assert.equal(result.deliveries[1]?.ok, true);
     assert.equal(result.deliveries[0]?.ms, 12);
   });
 
-  it("fails when both deliveries are accepted", async () => {
+  it("is inconclusive when duplicate deliveries are both accepted", async () => {
     const scenario = await loadScenario("duplicate-charge-succeeded");
     const result = await runScenario(
       scenario,
@@ -87,6 +88,7 @@ describe("runScenario", () => {
     );
 
     assert.equal(result.passed, false);
+    assert.equal(result.result, "inconclusive");
     assert.equal(result.deliveries[1]?.ok, false);
     assert.equal(result.deliveries[1]?.replay, true);
   });
@@ -117,6 +119,7 @@ describe("runScenario", () => {
       .digest("hex");
     assert.equal(signedHeader, `t=${timestamp},v1=${expectedV1}`);
     assert.equal(result.passed, true);
+    assert.equal(result.result, "pass");
   });
 
   it("runs refund-before-payment with distinct event ids", async () => {
@@ -137,13 +140,14 @@ describe("runScenario", () => {
     );
 
     assert.equal(result.passed, true);
+    assert.equal(result.result, "pass");
     assert.equal(result.deliveries[0]?.replay, false);
     assert.equal(result.deliveries[1]?.replay, false);
     assert.equal(result.deliveries[0]?.id, "evt_9f8e7d");
     assert.equal(result.deliveries[1]?.id, "evt_4c5d6e");
   });
 
-  it("fails charge-and-payment-intent-succeeded when both are accepted", async () => {
+  it("is inconclusive when charge and payment intent are both accepted", async () => {
     const scenario = await loadScenario("charge-and-payment-intent-succeeded");
     const result = await runScenario(
       scenario,
@@ -159,6 +163,7 @@ describe("runScenario", () => {
     );
 
     assert.equal(result.passed, false);
+    assert.equal(result.result, "inconclusive");
     assert.equal(result.deliveries[0]?.replay, false);
     assert.equal(result.deliveries[1]?.replay, false);
     assert.equal(result.assertion, "at_most_one_accepted");

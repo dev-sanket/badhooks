@@ -3,8 +3,8 @@
   "summary": "payment_intent.succeeded then charge.succeeded for one payment — different event IDs, same money.",
   "catches": "Deduplicating on event ID isn't enough; both events fulfill the same order twice.",
   "assert": "at_most_one_accepted",
-  "diagnosis": "Handler fulfilled the same payment twice from different event types.",
-  "manual_check_required": "Inspect the database for two fulfillment or payment rows sharing the same payment_intent or order_id.",
+  "diagnosis": "Endpoint responses did not meet the scenario's accepted/rejected contract.",
+  "manual_check_required": "Check your database: one fulfillment/payment record for pi_7a8b9c = correct. Two = the bug.",
   "pass_detail": "Endpoint accepted at most one of the two events for the same payment.",
   "deliveries": [
     { "event": "payment_intent.succeeded", "id": "evt_pi_7a8b9c", "delay_ms": 0, "expect": "accepted" },
